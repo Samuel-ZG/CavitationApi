@@ -1,0 +1,6 @@
+@CavitationApi_HostAddress = http://localhost:5288
+
+GET {{CavitationApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

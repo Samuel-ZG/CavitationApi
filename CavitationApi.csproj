@@ -1,0 +1,61 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>CavitationApi</RootNamespace>
+    <AssemblyName>CavitationApi</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- ORM y base de datos -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore"           Version="9.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
+    <!-- TODO NUBE: Descomentar para PostgreSQL en Azure/AWS/GCP -->
+    <!-- <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.0" /> -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools"    Version="9.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design"   Version="9.0.0" />
+
+    <!-- BCrypt para hash de contraseñas -->
+    <PackageReference Include="BCrypt.Net-Next"                        Version="4.0.3" />
+
+    <!-- Autenticación JWT -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
+
+    <!-- SignalR -->
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Core" Version="1.2.10" />
+
+    <!-- Generación de reportes PDF — iText7 (licencia AGPL) -->
+    <PackageReference Include="itext7"                                  Version="8.0.3" />
+
+    <!-- Generación de reportes Word — DocX Xceed (licencia Community) -->
+    <!-- TODO COMERCIAL: Si el uso es comercial, adquirir licencia Xceed Extended
+         o reemplazar por Open-XML-SDK (MIT) https://github.com/dotnet/Open-XML-SDK -->
+    <PackageReference Include="DocX"                                    Version="3.0.1" />
+
+    <!-- Mapeo de objetos -->
+    <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
+
+    <!-- Validación -->
+    <PackageReference Include="FluentValidation.AspNetCore"            Version="11.3.0" />
+
+    <!-- MQTT para sensores IoT -->
+    <PackageReference Include="MQTTnet"                                Version="4.3.3.952" />
+
+    <!-- Serialización JSON -->
+    <PackageReference Include="Newtonsoft.Json"                        Version="13.0.3" />
+
+    <!-- Swagger -->
+    <PackageReference Include="Swashbuckle.AspNetCore"                 Version="6.5.0" />
+
+    <!-- Serialización JSON en controllers -->
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="9.0.0" />
+
+    <!-- Logging -->
+    <PackageReference Include="Serilog.AspNetCore"                     Version="8.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console"                  Version="5.0.0" />
+    <PackageReference Include="Serilog.Sinks.File"                     Version="5.0.0" />
+  </ItemGroup>
+
+</Project>
