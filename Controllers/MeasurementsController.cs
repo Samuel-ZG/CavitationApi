@@ -94,4 +94,37 @@ public class MeasurementsController : ControllerBase
 
         return Ok(chartData);
     }
+    
+    // GET /api/measurements/experiment/{experimentId}/individual-chart
+    // Carta de individuales X-MR para un experimento
+    [HttpGet("experiment/{experimentId:int}/individual-chart")]
+    public async Task<IActionResult> GetIndividualChart(int experimentId)
+    {
+        var experiment = await _experimentService.GetByIdAsync(experimentId);
+        if (experiment is null)
+            return NotFound(new { message = $"Experimento {experimentId} no encontrado." });
+
+        var chartData = await _measurementService
+            .GetIndividualChartDataAsync(experimentId);
+
+        return Ok(chartData);
+    }
+
+// GET /api/measurements/cross-experiment-chart
+// Carta entre experimentos (por máquina, operario o todos)
+// ?machineId=1  o  ?operatorId=2  o  ?maxExperiments=25
+    [HttpGet("cross-experiment-chart")]
+    public async Task<IActionResult> GetCrossExperimentChart(
+        [FromQuery] int? machineId = null,
+        [FromQuery] int? operatorId = null,
+        [FromQuery] int maxExperiments = 25)
+    {
+        if (maxExperiments < 2 || maxExperiments > 100)
+            return BadRequest(new { message = "maxExperiments debe estar entre 2 y 100." });
+
+        var chartData = await _measurementService
+            .GetCrossExperimentChartDataAsync(machineId, operatorId, maxExperiments);
+
+        return Ok(chartData);
+    }
 }

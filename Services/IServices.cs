@@ -52,10 +52,20 @@ public interface IExperimentService
 public interface IMeasurementService
 {
     Task<IEnumerable<MeasurementDto>> GetByExperimentAsync(int experimentId);
+    
     Task<MeasurementDto> RecordAsync(CreateMeasurementRequest request);
     Task<MeasurementDto> RecordFromSensorAsync(SensorPayload payload);
     // Calcula los límites de control X̄-R para el gráfico
     Task<ControlChartData> GetControlChartDataAsync(int experimentId, int subgroupSize = 5);
+    
+    // Carta de individuales para un solo experimento
+    Task<IndividualChartData> GetIndividualChartDataAsync(int experimentId);
+
+// Carta entre experimentos (por máquina o todas)
+    Task<CrossExperimentChartData> GetCrossExperimentChartDataAsync(
+        int? machineId = null,
+        int? operatorId = null,
+        int maxExperiments = 25);
 }
 
 // ── Result ────────────────────────────────────────────────────
@@ -122,4 +132,48 @@ public record SubgroupPoint(
     double Mean,
     double Range,
     DateTime Timestamp
+);
+
+// ── Carta de individuales (X-MR) ─────────────────────────────
+// Para un experimento con cualquier cantidad de mediciones
+
+public record IndividualChartData(
+    double GrandMean,               // X̄ general
+    double UpperControlLimit,       // UCL = X̄ + 3×(MR̄/d2)
+    double LowerControlLimit,       // LCL = X̄ - 3×(MR̄/d2)
+    double AverageMovingRange,      // MR̄
+    double UpperRangeLimitMR,       // UCL_MR = D4 × MR̄  (D4=3.267 para n=2)
+    IEnumerable<IndividualPoint> Points
+);
+
+public record IndividualPoint(
+    int    Index,
+    double Value,
+    double? MovingRange,
+    DateTime Timestamp,
+    bool   AboveUCL,
+    bool   BelowLCL,
+    bool   MRAboveUCL
+);
+
+// ── Carta entre experimentos ──────────────────────────────────
+// Cada experimento es una observación (su caudal promedio)
+
+public record CrossExperimentChartData(
+    double GrandMean,
+    double UpperControlLimit,
+    double LowerControlLimit,
+    double AverageMovingRange,
+    double UpperRangeLimitMR,
+    IEnumerable<CrossExperimentPoint> Points
+);
+
+public record CrossExperimentPoint(
+    int      ExperimentId,
+    string   ExperimentName,
+    DateTime StartTime,
+    double   AverageFlowRate,
+    double?  MovingRange,
+    bool     AboveUCL,
+    bool     BelowLCL
 );

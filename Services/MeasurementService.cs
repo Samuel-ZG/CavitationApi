@@ -246,4 +246,150 @@ public class MeasurementService : IMeasurementService
             SubgroupRange   = subgroupRange.HasValue ? Math.Round(subgroupRange.Value, 4) : null
         };
     }
+    
+    // ── Carta de individuales (X-MR) ─────────────────────────────
+
+    public async Task<IndividualChartData> GetIndividualChartDataAsync(int experimentId)
+    {
+        var measurements = await _db.Measurements
+            .Where(m => m.ExperimentId == experimentId)
+            .OrderBy(m => m.Timestamp)
+            .AsNoTracking()
+            .ToListAsync();
+
+        if (measurements.Count < 2)
+            return new IndividualChartData(0, 0, 0, 0, 0,
+                Enumerable.Empty<IndividualPoint>());
+
+        var values = measurements.Select(m => m.FlowRate).ToList();
+
+        // Rangos móviles entre observaciones consecutivas
+        var movingRanges = new List<double>();
+        for (int i = 1; i < values.Count; i++)
+            movingRanges.Add(Math.Abs(values[i] - values[i - 1]));
+
+        var grandMean = values.Average();
+        var avgMR     = movingRanges.Average();
+
+        // d2 = 1.128 para subgrupos de n=2 (constante estándar SPC)
+        const double d2 = 1.128;
+        // D4 = 3.267 para n=2
+        const double d4MR = 3.267;
+
+        var ucl   = grandMean + 3.0 * (avgMR / d2);
+        var lcl   = Math.Max(0, grandMean - 3.0 * (avgMR / d2));
+        var uclMR = d4MR * avgMR;
+
+        var points = measurements.Select((m, i) =>
+        {
+            double? mr = i == 0 ? null : Math.Abs(values[i] - values[i - 1]);
+            return new IndividualPoint(
+                Index:       i + 1,
+                Value:       Math.Round(m.FlowRate, 4),
+                MovingRange: mr.HasValue ? Math.Round(mr.Value, 4) : null,
+                Timestamp:   m.Timestamp,
+                AboveUCL:    m.FlowRate > ucl,
+                BelowLCL:    m.FlowRate < lcl,
+                MRAboveUCL:  mr.HasValue && mr.Value > uclMR
+            );
+        });
+
+        return new IndividualChartData(
+            GrandMean:            Math.Round(grandMean, 4),
+            UpperControlLimit:    Math.Round(ucl, 4),
+            LowerControlLimit:    Math.Round(lcl, 4),
+            AverageMovingRange:   Math.Round(avgMR, 4),
+            UpperRangeLimitMR:    Math.Round(uclMR, 4),
+            Points:               points
+        );
+    }
+
+    // ── Carta entre experimentos ──────────────────────────────────
+
+    public async Task<CrossExperimentChartData> GetCrossExperimentChartDataAsync(
+        int? machineId = null,
+        int? operatorId = null,
+        int maxExperiments = 25)
+    {
+        // Tomar los últimos N experimentos completados
+        var query = _db.Experiments
+            .Where(x => x.Status == ExperimentStatus.Completed)
+            .AsQueryable();
+
+        if (machineId.HasValue)
+            query = query.Where(x => x.MachineId == machineId.Value);
+
+        if (operatorId.HasValue)
+            query = query.Where(x => x.OperatorId == operatorId.Value);
+
+        var experiments = await query
+            .OrderByDescending(x => x.StartTime)
+            .Take(maxExperiments)
+            .Select(x => new
+            {
+                x.Id,
+                x.Name,
+                x.StartTime
+            })
+            .ToListAsync();
+
+        // Invertir para orden cronológico
+        experiments = experiments.AsEnumerable().Reverse().ToList();
+
+        if (experiments.Count < 2)
+            return new CrossExperimentChartData(0, 0, 0, 0, 0,
+                Enumerable.Empty<CrossExperimentPoint>());
+
+        // Calcular caudal promedio de cada experimento
+        var expAverages = new List<(int Id, string Name, DateTime Start, double AvgFlow)>();
+
+        foreach (var exp in experiments)
+        {
+            var avg = await _db.Measurements
+                .Where(m => m.ExperimentId == exp.Id)
+                .AverageAsync(m => (double?)m.FlowRate) ?? 0.0;
+
+            expAverages.Add((exp.Id, exp.Name, exp.StartTime, avg));
+        }
+
+        var values = expAverages.Select(e => e.AvgFlow).ToList();
+
+        // Rangos móviles entre experimentos consecutivos
+        var movingRanges = new List<double>();
+        for (int i = 1; i < values.Count; i++)
+            movingRanges.Add(Math.Abs(values[i] - values[i - 1]));
+
+        var grandMean = values.Average();
+        var avgMR     = movingRanges.Average();
+
+        const double d2   = 1.128;
+        const double d4MR = 3.267;
+
+        var ucl   = grandMean + 3.0 * (avgMR / d2);
+        var lcl   = Math.Max(0, grandMean - 3.0 * (avgMR / d2));
+        var uclMR = d4MR * avgMR;
+
+        var points = expAverages.Select((e, i) =>
+        {
+            double? mr = i == 0 ? null : Math.Abs(values[i] - values[i - 1]);
+            return new CrossExperimentPoint(
+                ExperimentId:    e.Id,
+                ExperimentName:  e.Name,
+                StartTime:       e.Start,
+                AverageFlowRate: Math.Round(e.AvgFlow, 4),
+                MovingRange:     mr.HasValue ? Math.Round(mr.Value, 4) : null,
+                AboveUCL:        e.AvgFlow > ucl,
+                BelowLCL:        e.AvgFlow < lcl
+            );
+        });
+
+        return new CrossExperimentChartData(
+            GrandMean:          Math.Round(grandMean, 4),
+            UpperControlLimit:  Math.Round(ucl, 4),
+            LowerControlLimit:  Math.Round(lcl, 4),
+            AverageMovingRange: Math.Round(avgMR, 4),
+            UpperRangeLimitMR:  Math.Round(uclMR, 4),
+            Points:             points
+        );
+    }
 }
