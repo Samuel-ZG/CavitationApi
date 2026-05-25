@@ -239,15 +239,12 @@ var app = builder.Build();
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
 // 2. Swagger — solo en desarrollo
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Cavitation API v1");
-        c.RoutePrefix = "swagger";
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Cavitation API v1");
+    c.RoutePrefix = "swagger";
+});
 
 // 3. Logging de requests
 app.UseSerilogRequestLogging();
